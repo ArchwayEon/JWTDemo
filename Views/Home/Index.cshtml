@@ -1,0 +1,141 @@
+﻿@{
+    ViewData["Title"] = "JWT Demo";
+}
+
+<h1 class="display-6">Token-Based Authentication with JWT</h1>
+<p class="lead">
+    This page is a plain JavaScript client. It logs in through <code>POST /api/auth/login</code>,
+    stores the returned JWT in <code>localStorage</code>, and sends it in the
+    <code>Authorization: Bearer &lt;token&gt;</code> header when calling the API.
+    Open your browser's DevTools (Network tab) to watch the requests.
+</p>
+
+<div class="row g-4">
+    <!-- ================= Step 1: Login ================= -->
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header"><strong>Step 1 &ndash; Log in</strong></div>
+            <div class="card-body">
+                <p class="small text-muted mb-2">Quick fill a demo account (password <code>Password123!</code>):</p>
+                <div class="btn-group btn-group-sm mb-3" role="group">
+                    <button type="button" class="btn btn-outline-secondary" data-email="admin@example.com">Administrator</button>
+                    <button type="button" class="btn btn-outline-secondary" data-email="manager@example.com">Manager</button>
+                    <button type="button" class="btn btn-outline-secondary" data-email="user@example.com">User</button>
+                </div>
+                <form id="loginForm">
+                    <div class="mb-2">
+                        <label for="email" class="form-label">Email</label>
+                        <input id="email" type="email" class="form-control" value="user@example.com" required />
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <input id="password" type="password" class="form-control" value="Password123!" required />
+                    </div>
+                    <button type="submit" class="btn btn-primary">Log in &amp; get token</button>
+                    <button type="button" id="logoutBtn" class="btn btn-outline-danger">Log out (delete token)</button>
+                </form>
+                <div id="loginStatus" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= Step 2: The token ================= -->
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <strong>Step 2 &ndash; Inspect the token</strong>
+                <span id="expiry" class="badge text-bg-secondary">No token</span>
+            </div>
+            <div class="card-body">
+                <p class="small text-muted mb-1">
+                    Encoded token (<span class="jwt-header">header</span>.<span class="jwt-payload">payload</span>.<span class="jwt-signature">signature</span>):
+                </p>
+                <div id="rawToken" class="jwt-raw mb-3"><em class="text-muted">Log in to receive a token.</em></div>
+
+                <div class="row g-2">
+                    <div class="col-md-5">
+                        <p class="small mb-1 jwt-header fw-bold">Header (decoded)</p>
+                        <pre id="decodedHeader" class="jwt-box"></pre>
+                    </div>
+                    <div class="col-md-7">
+                        <p class="small mb-1 jwt-payload fw-bold">Payload (decoded)</p>
+                        <pre id="decodedPayload" class="jwt-box"></pre>
+                    </div>
+                </div>
+                <p class="small text-muted mb-0">
+                    Decoding happened entirely in the browser, with no secret key. Base64URL is an
+                    <em>encoding</em>, not encryption, so never put sensitive data in a JWT.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ================= Step 3: Call the API ================= -->
+<div class="card mt-4">
+    <div class="card-header"><strong>Step 3 &ndash; Call the API</strong></div>
+    <div class="card-body">
+        <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" role="switch" id="sendToken" checked />
+            <label class="form-check-label" for="sendToken">Send the <code>Authorization: Bearer</code> header</label>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead>
+                    <tr><th>Request</th><th>Who is allowed?</th><th></th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>GET /api/products/featured</code></td>
+                        <td>Anyone (<code>[AllowAnonymous]</code>)</td>
+                        <td><button class="btn btn-sm btn-success" data-method="GET" data-url="/api/products/featured">Send</button></td>
+                    </tr>
+                    <tr>
+                        <td><code>GET /api/products</code></td>
+                        <td>Any valid token (<code>[Authorize]</code>)</td>
+                        <td><button class="btn btn-sm btn-success" data-method="GET" data-url="/api/products">Send</button></td>
+                    </tr>
+                    <tr>
+                        <td><code>GET /api/auth/me</code></td>
+                        <td>Any valid token &ndash; echoes the claims the server read from it</td>
+                        <td><button class="btn btn-sm btn-success" data-method="GET" data-url="/api/auth/me">Send</button></td>
+                    </tr>
+                    <tr>
+                        <td><code>PUT /api/products/1</code></td>
+                        <td><code>Roles = "Administrator,Manager"</code></td>
+                        <td><button class="btn btn-sm btn-success" data-method="PUT" data-url="/api/products/1">Send</button></td>
+                    </tr>
+                    <tr>
+                        <td><code>DELETE /api/products/1</code></td>
+                        <td><code>Roles = "Administrator"</code></td>
+                        <td><button class="btn btn-sm btn-success" data-method="DELETE" data-url="/api/products/1">Send</button></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h6 class="mt-2">Request</h6>
+        <pre id="requestOut" class="jwt-box">(click a Send button)</pre>
+        <h6>Response</h6>
+        <pre id="responseOut" class="jwt-box"></pre>
+    </div>
+</div>
+
+<!-- ================= Step 4: Tamper ================= -->
+<div class="card mt-4">
+    <div class="card-header"><strong>Step 4 &ndash; Try to cheat</strong></div>
+    <div class="card-body">
+        <p>
+            Log in as <code>user@example.com</code>, then click the button below. It edits the payload in
+            the browser to say <code>"role": "Administrator"</code> but keeps the original signature, then
+            calls the Administrator-only <code>DELETE</code> endpoint. The server recomputes the signature with
+            its secret key, sees that it no longer matches, and rejects the token with <strong>401</strong>.
+        </p>
+        <button id="tamperBtn" class="btn btn-warning">Promote myself to Administrator &amp; DELETE</button>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/jwt-demo.js" asp-append-version="true"></script>
+}
